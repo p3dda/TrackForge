@@ -22,9 +22,9 @@ Navigationsgerät aber nur den Track bekommen soll.
   Routen und Metadaten bleiben erhalten
 - Download als `<name>_clean.gpx`
 
-| Startseite | Ergebnis |
-|---|---|
-| ![Startseite](docs/screenshots/main.png) | ![Ergebnis](docs/screenshots/result.png) |
+| Startseite | Komoot-Import | GPX-Upload (7 Wegpunkte entfernt) |
+|---|---|---|
+| ![Startseite](docs/screenshots/main.png) | ![Komoot-Import](docs/screenshots/result.png) | ![GPX-Upload](docs/screenshots/upload-result.png) |
 
 ## Schnellstart (Docker)
 
