@@ -7,9 +7,10 @@
 <p align="center"><em>Forge clean GPX tracks — Wegpunkte raus, Track bleibt.</em></p>
 
 TrackForge ist eine kleine Web-App, die GPX-Dateien von allen `<wpt>`-Wegpunkten
-befreit und dabei den Track unverändert lässt. Praktisch z.&nbsp;B. für
-Brevet-Strecken, bei denen Kontrollpunkte als Wegpunkte eingebettet sind, das
-Navigationsgerät aber nur den Track bekommen soll.
+befreit und dabei den Track unverändert lässt. Praktisch vor allem für
+Komoot-Exporte: Komoot bettet Highlights als Wegpunkte in die GPX-Datei ein,
+die dann ungewollt auf dem Navigationsgerät auftauchen — TrackForge entfernt
+sie, sodass das Navi nur den reinen Track anzeigt.
 
 ## Features
 

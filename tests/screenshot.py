@@ -17,13 +17,13 @@ DEMO_TOUR = "https://www.komoot.com/tour/13584167"
 DEMO_GPX = """<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="demo" xmlns="http://www.topografix.com/GPX/1/1">
 {waypoints}
-  <trk><name>Brevet 200k</name><trkseg>
+  <trk><name>Rheinsteig Etappe 3</name><trkseg>
 {trackpoints}
   </trkseg></trk>
 </gpx>
 """.format(
     waypoints="\n".join(
-        f'  <wpt lat="50.{70 + i}" lon="7.{10 + i}"><name>Kontrolle {i + 1}</name></wpt>'
+        f'  <wpt lat="50.{70 + i}" lon="7.{10 + i}"><name>Highlight {i + 1}</name></wpt>'
         for i in range(7)
     ),
     trackpoints="\n".join(
@@ -54,7 +54,7 @@ with sync_playwright() as p:
     page.goto(BASE_URL)
     page.wait_for_selector("text=TrackForge", timeout=30000)
     with tempfile.TemporaryDirectory() as tmp:
-        gpx_path = Path(tmp) / "Brevet 200k.gpx"
+        gpx_path = Path(tmp) / "Rheinsteig Etappe 3.gpx"
         gpx_path.write_text(DEMO_GPX)
         page.set_input_files("input[type=file]", gpx_path)
     page.wait_for_selector("text=Wegpunkte entfernt", timeout=30000)
