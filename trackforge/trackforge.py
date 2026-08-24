@@ -80,7 +80,20 @@ class TrackForgeState(rx.State):
 
     @rx.event
     def download(self):
-        return rx.download(data=self.result_gpx, filename=self.result_filename)
+        # iOS Safari refuses to save `data:` URI downloads (it just renders
+        # them inline), so write the file to the upload dir and download it
+        # via a real URL with a proper Content-Disposition header instead.
+        upload_dir = rx.get_upload_dir() / self.router.session.client_token
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        (upload_dir / self.result_filename).write_text(
+            self.result_gpx, encoding="utf-8"
+        )
+        return rx.download(
+            url=rx.get_upload_url(
+                f"{self.router.session.client_token}/{self.result_filename}"
+            ),
+            filename=self.result_filename,
+        )
 
 
 def upload_card() -> rx.Component:
