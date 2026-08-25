@@ -9,6 +9,10 @@ RUN apt-get update -y \
 COPY pyproject.toml rxconfig.py ./
 COPY trackforge ./trackforge
 COPY assets ./assets
+# Pinned frontend deps: reflex recovers dependencies/lockfiles from here and
+# does a frozen-lockfile install, so the image gets the exact versions
+# committed in reflex.lock/ instead of whatever bun resolves at build time.
+COPY reflex.lock ./reflex.lock
 
 RUN pip install --no-cache-dir "reflex>=0.9" "httpx>=0.27" "uvicorn>=0.30"
 
