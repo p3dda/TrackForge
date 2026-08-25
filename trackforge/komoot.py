@@ -6,7 +6,9 @@ from xml.sax.saxutils import escape
 
 import httpx
 
-_TOUR_ID_RE = re.compile(r"komoot\.[a-z.]+(?:/[a-z]{2}-[a-z]{2})?/tour/(\d+)", re.IGNORECASE)
+_TOUR_ID_RE = re.compile(
+    r"komoot\.[a-z.]+(?:/[a-z]{2}-[a-z]{2})?/tour/(\d+)", re.IGNORECASE
+)
 
 _HEADERS = {
     "User-Agent": (
@@ -90,9 +92,7 @@ def _build_gpx(name: str, items: list[dict]) -> str:
     points = []
     for pt in items:
         ele = f"<ele>{pt['alt']}</ele>" if "alt" in pt else ""
-        points.append(
-            f'      <trkpt lat="{pt["lat"]}" lon="{pt["lng"]}">{ele}</trkpt>'
-        )
+        points.append(f'      <trkpt lat="{pt["lat"]}" lon="{pt["lng"]}">{ele}</trkpt>')
     body = "\n".join(points)
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'

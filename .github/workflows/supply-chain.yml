@@ -1,0 +1,95 @@
+name: Supply Chain
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Daily, offset from the hour so it doesn't line up with everyone else's
+    # cron jobs.
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-scan:
+    name: OSV-Scanner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@v7.0.1
+
+      # The reusable workflow from google/osv-scanner-action wants
+      # security-events: write for SARIF upload, which is more than this
+      # needs -- the plain CLI call fails the job just as well.
+      - name: Install OSV-Scanner
+        run: |
+          curl -sSfL -o /usr/local/bin/osv-scanner \
+            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
+          chmod +x /usr/local/bin/osv-scanner
+          osv-scanner --version
+
+      - name: Scan lockfiles
+        run: osv-scanner scan source --lockfile=uv.lock --lockfile=reflex.lock/bun.lock .
+
+  ioc-scan:
+    name: IOC scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@v7.0.1
+
+      # Looks for artifacts of known npm supply-chain worms (this repo pulls
+      # in an npm/bun toolchain transitively via reflex.lock) and generic
+      # persistence hooks that autorun when the project is opened in an
+      # editor -- the mechanism these worms use to spread from a developer
+      # machine into the repo and onward.
+      - name: Search for worm artifacts
+        run: |
+          set -uo pipefail
+          fail=0
+
+          note() { echo "::error::$*"; fail=1; }
+
+          # keyv worm (2026-08-04): preinstall pulls in Bun and persists via
+          # editor hooks.
+          for f in setup.mjs Math_Symbol.js .vscode/setup.mjs .claude/setup.mjs; do
+            if [ -e "$f" ]; then note "worm artifact found: $f"; fi
+          done
+          if find . -name 'setup.mjs' -not -path './node_modules/*' | grep -q .; then
+            note "setup.mjs found somewhere in the tree"
+          fi
+
+          # Autorun on project open -- the persistence mechanism.
+          if [ -f .vscode/tasks.json ] && grep -q 'folderOpen' .vscode/tasks.json; then
+            note ".vscode/tasks.json runs a task on open (runOn: folderOpen)"
+          fi
+          # .claude/settings.json itself is legitimate; only a hook pointing
+          # at the worm artifacts is suspicious.
+          if [ -f .claude/settings.json ] && grep -qE 'setup\.mjs|Math_Symbol|bun ' .claude/settings.json; then
+            note ".claude/settings.json invokes setup.mjs/bun"
+          fi
+
+          # Shai-Hulud/TanStack (2026-05-11) and known exfiltration targets.
+          if grep -rl --binary-files=without-match \
+               -e '79ac49eedf774dd4b0cfa308722bc463cfe5885c' \
+               -e 'getsession\.org' -e 'git-tanstack\.com' -e 'webhook\.site' \
+               --exclude-dir=node_modules --exclude-dir=.git \
+               --exclude=supply-chain.yml . | grep -q .; then
+            note "known malware indicator found in working tree"
+          fi
+
+          if [ "$fail" -eq 0 ]; then echo "IOC scan clean."; fi
+          exit "$fail"
