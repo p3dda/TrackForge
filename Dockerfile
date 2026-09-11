@@ -14,7 +14,7 @@ COPY assets ./assets
 # committed in reflex.lock/ instead of whatever bun resolves at build time.
 COPY reflex.lock ./reflex.lock
 
-RUN pip install --no-cache-dir "reflex>=0.9" "httpx>=0.27" "uvicorn>=0.30"
+RUN pip install --no-cache-dir "reflex==0.9.10.post2" "httpx>=0.27" "uvicorn>=0.30"
 
 # Build the static frontend; the backend serves it in prod backend-only mode.
 RUN reflex init && reflex export --frontend-only --no-zip
