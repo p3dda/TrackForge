@@ -22,10 +22,10 @@ jobs:
       # Audits outbound network calls the job makes; doesn't block anything
       # yet. Switch to egress-policy: block once the allowlist has settled.
       - name: Harden runner
-        uses: step-security/harden-runner@v2.21.0
+        uses: step-security/harden-runner@v2.21.1
         with:
           egress-policy: audit
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
@@ -44,10 +44,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@v2.21.0
+        uses: step-security/harden-runner@v2.21.1
         with:
           egress-policy: audit
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
