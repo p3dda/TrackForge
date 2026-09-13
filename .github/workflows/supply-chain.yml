@@ -23,10 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@v2.21.0
+        uses: step-security/harden-runner@v2.21.1
         with:
           egress-policy: audit
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
 
       # The reusable workflow from google/osv-scanner-action wants
       # security-events: write for SARIF upload, which is more than this
@@ -46,10 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@v2.21.0
+        uses: step-security/harden-runner@v2.21.1
         with:
           egress-policy: audit
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
 
       # Looks for artifacts of known npm supply-chain worms (this repo pulls
       # in an npm/bun toolchain transitively via reflex.lock) and generic
