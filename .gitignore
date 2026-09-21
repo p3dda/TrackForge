@@ -9,3 +9,4 @@ states/
 .pytest_cache/
 .DS_Store
 *.gpx
+.claude/settings.local.json
