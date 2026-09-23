@@ -1,10 +1,11 @@
 """TrackForge - forge clean GPX tracks."""
 
+import asyncio
 import re
 
 import reflex as rx
 
-from .gpx import count_trackpoints, remove_waypoints
+from .gpx import count_trackpoints, is_gpx, remove_waypoints
 from .komoot import KomootError, fetch_gpx
 
 
@@ -55,21 +56,23 @@ class TrackForgeState(rx.State):
             content = data.decode("utf-8")
         except UnicodeDecodeError:
             content = data.decode("latin-1")
-        if "<gpx" not in content:
+        if not is_gpx(content):
             self.error = "Die Datei scheint keine gültige GPX-Datei zu sein."
             return
         self._process(content, file.name or "track.gpx")
 
     @rx.event
-    def fetch_komoot(self):
+    async def fetch_komoot(self):
         self._reset()
-        if not self.komoot_url.strip():
+        url = self.komoot_url.strip()
+        if not url:
             self.error = "Bitte einen Komoot-Link eingeben."
             return
         self.is_loading = True
         yield
         try:
-            content, name = fetch_gpx(self.komoot_url.strip())
+            # fetch_gpx does blocking HTTP; keep it off the event loop.
+            content, name = await asyncio.to_thread(fetch_gpx, url)
             self._process(content, name)
         except KomootError as exc:
             self.error = str(exc)
@@ -83,15 +86,14 @@ class TrackForgeState(rx.State):
         # iOS Safari refuses to save `data:` URI downloads (it just renders
         # them inline), so write the file to the upload dir and download it
         # via a real URL with a proper Content-Disposition header instead.
-        upload_dir = rx.get_upload_dir() / self.router.session.client_token
+        token = self.router.session.client_token
+        upload_dir = rx.get_upload_dir() / token
         upload_dir.mkdir(parents=True, exist_ok=True)
         (upload_dir / self.result_filename).write_text(
             self.result_gpx, encoding="utf-8"
         )
         return rx.download(
-            url=rx.get_upload_url(
-                f"{self.router.session.client_token}/{self.result_filename}"
-            ),
+            url=rx.get_upload_url(f"{token}/{self.result_filename}"),
             filename=self.result_filename,
         )
 

@@ -123,3 +123,9 @@ class TestFetchGpx:
             "https://www.komoot.com/tour/1", transport=make_transport(json_body=body)
         )
         assert "<name>Tour &lt;mit&gt; &amp; Sonderzeichen</name>" in gpx
+
+    def test_gpx_endpoint_name_is_unescaped(self):
+        raw_gpx = "<gpx><trk><name>Berg &amp; Tal</name></trk></gpx>"
+        transport = httpx.MockTransport(lambda _: httpx.Response(200, text=raw_gpx))
+        _, name = fetch_gpx("https://www.komoot.com/tour/1", transport=transport)
+        assert name == "Berg & Tal"

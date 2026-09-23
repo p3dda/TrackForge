@@ -6,6 +6,8 @@ from xml.sax.saxutils import escape
 
 import httpx
 
+from .gpx import gpx_name, is_gpx
+
 _TOUR_ID_RE = re.compile(
     r"komoot\.[a-z.]+(?:/[a-z]{2}-[a-z]{2})?/tour/(\d+)", re.IGNORECASE
 )
@@ -20,7 +22,7 @@ _HEADERS = {
 
 
 class KomootError(Exception):
-    pass
+    """User-facing error while fetching a Komoot tour."""
 
 
 def extract_tour_id(url: str) -> str:
@@ -55,9 +57,8 @@ def fetch_gpx(
         resp = client.get(
             f"https://www.komoot.com/api/v007/tours/{tour_id}.gpx", params=params
         )
-        if resp.status_code == 200 and "<gpx" in resp.text:
-            name = _gpx_name(resp.text) or f"komoot-tour-{tour_id}"
-            return resp.text, name
+        if resp.status_code == 200 and is_gpx(resp.text):
+            return resp.text, gpx_name(resp.text) or _fallback_name(tour_id)
         if resp.status_code == 404:
             raise KomootError(f"Tour {tour_id} wurde nicht gefunden.")
         # The .gpx endpoint requires auth even for public tours;
@@ -66,11 +67,11 @@ def fetch_gpx(
 
 
 def _fetch_via_json(
-    client: httpx.Client, tour_id: str, extra_params: dict | None = None
+    client: httpx.Client, tour_id: str, params: dict[str, str]
 ) -> tuple[str, str]:
     resp = client.get(
         f"https://www.komoot.com/api/v007/tours/{tour_id}",
-        params={"_embedded": "coordinates", **(extra_params or {})},
+        params={"_embedded": "coordinates", **params},
     )
     if resp.status_code in (401, 403):
         raise KomootError(
@@ -81,7 +82,7 @@ def _fetch_via_json(
     if resp.status_code != 200:
         raise KomootError(f"Komoot antwortete mit HTTP {resp.status_code}.")
     data = resp.json()
-    name = data.get("name") or f"komoot-tour-{tour_id}"
+    name = data.get("name") or _fallback_name(tour_id)
     items = data.get("_embedded", {}).get("coordinates", {}).get("items", [])
     if not items:
         raise KomootError("Die Tour enthält keine Koordinaten.")
@@ -104,6 +105,5 @@ def _build_gpx(name: str, items: list[dict]) -> str:
     )
 
 
-def _gpx_name(content: str) -> str | None:
-    match = re.search(r"<name>(.*?)</name>", content, re.DOTALL)
-    return match.group(1).strip() if match else None
+def _fallback_name(tour_id: str) -> str:
+    return f"komoot-tour-{tour_id}"
