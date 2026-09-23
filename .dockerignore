@@ -2,6 +2,5 @@
 __pycache__
 *.gpx
 .venv
-uv.lock
 .git
 states

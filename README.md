@@ -78,7 +78,7 @@ trackforge/
 
 - **Frontend/Backend:** [Reflex](https://reflex.dev) (Pure Python). Im
   Docker-Image wird das Frontend mit `reflex export` statisch gebaut und vom
-  Backend (Uvicorn, Port 8000) mit ausgeliefert
+  Backend (Granian, Port 8000) mit ausgeliefert
   (`__REFLEX_MOUNT_FRONTEND_COMPILED_APP=1`).
 - **GPX-Verarbeitung** (`gpx.py`): entfernt `<wpt>`-Blöcke per Regex auf dem
   Roh-Text — die Datei wird ansonsten byte-genau erhalten (kein
