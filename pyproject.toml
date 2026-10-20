@@ -10,9 +10,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "playwright>=1.63.0",
+    "playwright>=1.64.0",
     "pytest>=9.1.1",
-    "ruff>=0.17.0",
+    "ruff>=0.17.1",
 ]
 
 [tool.pytest.ini_options]
