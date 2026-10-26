@@ -1,0 +1,37 @@
+name: Renovate
+
+# Dependabot can't update reflex.lock/bun.lock (security updates run as
+# npm_and_yarn and abort), so Renovate takes over the frontend lockfile.
+# uv and GitHub Actions stay with Dependabot.
+
+on:
+  schedule:
+    # Runs before the daily Supply Chain scan at 06:15.
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    name: Renovate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2.22.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@v7
+      - uses: renovatebot/github-action@v46.3.10
+        with:
+          configurationFile: renovate.json
+          token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_REQUIRE_CONFIG: optional
