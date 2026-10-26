@@ -11,17 +11,6 @@ updates:
         patterns: ["*"]
     open-pull-requests-limit: 5
 
-  - package-ecosystem: "bun"
-    directory: "/reflex.lock"
-    schedule:
-      interval: "weekly"
-    cooldown:
-      default-days: 3
-    groups:
-      frontend:
-        patterns: ["*"]
-    open-pull-requests-limit: 5
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
