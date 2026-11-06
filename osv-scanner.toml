@@ -1,0 +1,15 @@
+# Accepted OSV findings. Every entry needs a reason and an ignoreUntil date:
+# when the date passes, the daily scan on main fails again as a reminder to
+# re-check whether a real fix is available.
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2027-01-06
+reason = """
+minimatch 10.2.6 (DoS via globparts amplification), fixed only in 11.0.1.
+Pulled in by @react-router/fs-routes (devDependency, build time only), which
+still requires ^10.2.5 in 8.5.1 and imports makeRe -- removed in minimatch 11 --
+so an override to 11.x breaks the frontend build. The glob patterns come from
+our own route config, not from user input, so the DoS is not reachable.
+Drop this once @react-router/fs-routes supports minimatch 11.
+"""
