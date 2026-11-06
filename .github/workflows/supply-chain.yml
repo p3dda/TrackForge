@@ -30,16 +30,86 @@ jobs:
 
       # The reusable workflow from google/osv-scanner-action wants
       # security-events: write for SARIF upload, which is more than this
-      # needs -- the plain CLI call fails the job just as well.
-      - name: Install OSV-Scanner
-        run: |
-          curl -sSfL -o /usr/local/bin/osv-scanner \
-            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
-          chmod +x /usr/local/bin/osv-scanner
-          osv-scanner --version
+      # needs, so its PR logic is inlined below with the scanner and reporter
+      # actions. Using the actions (instead of curl'ing releases/latest) pins
+      # the scanner version and lets Dependabot bump it.
+      #
+      # Accepted findings live in osv-scanner.toml. It is copied out of the
+      # tree so the base scan uses the same ignores as the PR -- otherwise a
+      # PR that adds an ignore would still see the finding on base, and a PR
+      # that removes one would see it as new.
 
+      # push to main / schedule / manual: fail on any known vulnerability.
       - name: Scan lockfiles
-        run: osv-scanner scan source --lockfile=uv.lock --lockfile=reflex.lock/bun.lock .
+        if: github.event_name != 'pull_request'
+        uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
+        with:
+          scan-args: |-
+            --config=osv-scanner.toml
+            --lockfile=uv.lock
+            --lockfile=reflex.lock/bun.lock
+
+      # pull_request: fail only on vulnerabilities the PR introduces, so
+      # advisories published against what is already on main don't block
+      # unrelated Dependabot/Renovate PRs. Those still fail the daily scan.
+      - name: Check out base commit
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          cp osv-scanner.toml osv-scanner.pr.toml
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git checkout --detach "$BASE_SHA"
+      - name: Scan base commit
+        id: scan-old
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
+        with:
+          scan-args: |-
+            --format=json
+            --output=old-results.json
+            --config=osv-scanner.pr.toml
+            --lockfile=uv.lock
+            --lockfile=reflex.lock/bun.lock
+      - name: Check out PR commit
+        if: github.event_name == 'pull_request'
+        run: git checkout -f "$GITHUB_SHA"
+      - name: Scan PR commit
+        id: scan-new
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
+        with:
+          scan-args: |-
+            --format=json
+            --output=new-results.json
+            --config=osv-scanner.pr.toml
+            --lockfile=uv.lock
+            --lockfile=reflex.lock/bun.lock
+      # The scanner exits 1 both on findings and on errors; only a missing
+      # results file tells them apart. Don't report "nothing new" then.
+      - name: Check that both scans completed
+        if: github.event_name == 'pull_request'
+        run: |
+          status=0
+          for f in old-results.json new-results.json; do
+            if [ ! -s "$f" ]; then
+              echo "::error::OSV-Scanner did not write $f, see the scan step above."
+              status=1
+            fi
+          done
+          exit "$status"
+      - name: Report vulnerabilities introduced by this PR
+        if: github.event_name == 'pull_request'
+        uses: google/osv-scanner-action/osv-reporter-action@v2.7.0
+        with:
+          scan-args: |-
+            --old=old-results.json
+            --new=new-results.json
+            --output-files=table:#stdout
+            --output-files=gh-annotations:#stderr
+            --fail-on-vuln=true
 
   ioc-scan:
     name: IOC scan
