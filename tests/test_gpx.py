@@ -61,3 +61,19 @@ def test_is_gpx():
 def test_gpx_name_is_unescaped():
     assert gpx_name("<gpx><trk><name> A &amp; B </name></trk></gpx>") == "A & B"
     assert gpx_name("<gpx></gpx>") is None
+
+
+def test_track_preview_draws_track_and_waypoints():
+    from trackforge.gpx import track_preview_svg
+
+    svg = track_preview_svg(GPX_WITH_WAYPOINTS)
+    assert svg.startswith("<svg")
+    assert svg.count("<path") == 1
+    # 2 waypoint markers + 2 track end markers
+    assert svg.count("<circle") == 4
+
+
+def test_track_preview_empty_without_track():
+    from trackforge.gpx import track_preview_svg
+
+    assert track_preview_svg('<gpx><wpt lat="1" lon="2"/></gpx>') == ""

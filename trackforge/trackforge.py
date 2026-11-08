@@ -2,10 +2,11 @@
 
 import asyncio
 import re
+from urllib.parse import quote
 
 import reflex as rx
 
-from .gpx import count_trackpoints, is_gpx, remove_waypoints
+from .gpx import count_trackpoints, is_gpx, remove_waypoints, track_preview_svg
 from .komoot import KomootError, fetch_gpx
 
 
@@ -24,6 +25,7 @@ class TrackForgeState(rx.State):
     source_name: str = ""
     removed_count: int = 0
     trackpoint_count: int = 0
+    track_svg_uri: str = ""
 
     def _reset(self):
         self.error = ""
@@ -32,6 +34,7 @@ class TrackForgeState(rx.State):
         self.source_name = ""
         self.removed_count = 0
         self.trackpoint_count = 0
+        self.track_svg_uri = ""
 
     def _process(self, content: str, name: str):
         cleaned, removed = remove_waypoints(content)
@@ -40,6 +43,8 @@ class TrackForgeState(rx.State):
         self.source_name = name
         self.removed_count = removed
         self.trackpoint_count = count_trackpoints(cleaned)
+        svg = track_preview_svg(content)
+        self.track_svg_uri = f"data:image/svg+xml;utf8,{quote(svg)}" if svg else ""
 
     @rx.event
     def update_komoot_url(self, value: str):
@@ -98,19 +103,123 @@ class TrackForgeState(rx.State):
         )
 
 
-def upload_card() -> rx.Component:
-    return rx.card(
-        rx.vstack(
+MUTED = "var(--tf-muted)"
+TEXT_2 = "var(--tf-text-2)"
+
+
+def card_heading(title: str, subtitle: str | None = None) -> rx.Component:
+    children = [rx.text(title, size="3", weight="medium", color="var(--tf-text)")]
+    if subtitle:
+        children.append(rx.text(subtitle, size="2", color=TEXT_2))
+    return rx.vstack(*children, spacing="1", width="100%")
+
+
+def legend_item(marker_class: str, label: str) -> rx.Component:
+    return rx.hstack(
+        rx.box(class_name=marker_class),
+        rx.text(label, size="1", color=MUTED),
+        spacing="2",
+        align="center",
+    )
+
+
+def track_preview() -> rx.Component:
+    return rx.cond(
+        TrackForgeState.track_svg_uri != "",
+        rx.box(
+            rx.image(
+                src=TrackForgeState.track_svg_uri,
+                alt="Verlauf des bereinigten Tracks mit entfernten Wegpunkten",
+            ),
             rx.hstack(
-                rx.icon("file-up", size=20, color=rx.color("amber", 9)),
-                rx.heading("GPX-Datei", size="4"),
-                align="center",
+                legend_item("tf-legend-track", "Track"),
+                rx.cond(
+                    TrackForgeState.removed_count > 0,
+                    legend_item("tf-legend-wpt", "entfernte Wegpunkte"),
+                ),
+                spacing="4",
+                position="absolute",
+                left="12px",
+                bottom="8px",
+            ),
+            class_name="tf-track",
+        ),
+    )
+
+
+def figure(value, label: str) -> rx.Component:
+    return rx.vstack(
+        rx.text(label, size="2", color=TEXT_2),
+        rx.text(value, class_name="tf-figure"),
+        spacing="1",
+    )
+
+
+def result_panel() -> rx.Component:
+    return rx.cond(
+        TrackForgeState.result_gpx != "",
+        rx.box(
+            rx.vstack(
+                rx.hstack(
+                    rx.hstack(
+                        rx.icon("circle-check", size=16, color="var(--tf-positive)"),
+                        rx.text("Fertig geschmiedet", size="3", weight="medium"),
+                        spacing="2",
+                        align="center",
+                        flex_shrink="0",
+                    ),
+                    rx.text(
+                        TrackForgeState.result_filename,
+                        size="1",
+                        color=MUTED,
+                        class_name="tf-mono",
+                        white_space="nowrap",
+                        overflow="hidden",
+                        text_overflow="ellipsis",
+                        min_width="0",
+                        flex="1",
+                        text_align="right",
+                    ),
+                    justify="between",
+                    align="center",
+                    spacing="4",
+                    width="100%",
+                ),
+                track_preview(),
+                rx.grid(
+                    figure(TrackForgeState.removed_count, "Wegpunkte entfernt"),
+                    figure(TrackForgeState.trackpoint_count, "Trackpunkte erhalten"),
+                    columns="2",
+                    spacing="4",
+                    width="100%",
+                ),
+                rx.button(
+                    rx.icon("download", size=16),
+                    "GPX herunterladen",
+                    on_click=TrackForgeState.download,
+                    size="3",
+                    width="100%",
+                    margin_top="4px",
+                ),
+                spacing="5",
+                width="100%",
+            ),
+            class_name="tf-card tf-enter",
+        ),
+    )
+
+
+def upload_card() -> rx.Component:
+    return rx.box(
+        rx.vstack(
+            card_heading(
+                "GPX-Datei", "Export aus Komoot oder einem anderen Routenplaner"
             ),
             rx.upload(
                 rx.vstack(
-                    rx.icon("upload", size=32, color=rx.color("amber", 8)),
-                    rx.text("GPX-Datei hierher ziehen oder klicken"),
-                    rx.text(".gpx", size="1", color_scheme="gray"),
+                    rx.icon("upload", size=18, color=MUTED, stroke_width=1.5),
+                    rx.text("Datei ablegen oder auswählen", size="2"),
+                    rx.text(".gpx", size="1", color=MUTED, class_name="tf-mono"),
                     align="center",
                     spacing="2",
                 ),
@@ -120,93 +229,59 @@ def upload_card() -> rx.Component:
                 on_drop=TrackForgeState.handle_upload(
                     rx.upload_files(upload_id="gpx_upload")
                 ),
-                border=f"2px dashed {rx.color('amber', 7)}",
-                border_radius="12px",
-                padding="2em",
+                border="1px dashed var(--tf-line-strong)",
+                border_radius="8px",
+                cursor="pointer",
+                transition="background-color 150ms var(--tf-ease), border-color 150ms var(--tf-ease)",
+                _hover={
+                    "background": "var(--tf-raised)",
+                    "border_color": "rgba(237, 237, 237, 0.28)",
+                },
+                padding="32px 16px",
                 width="100%",
             ),
-            spacing="3",
+            spacing="4",
             width="100%",
         ),
-        width="100%",
+        class_name="tf-card",
     )
 
 
 def komoot_card() -> rx.Component:
-    return rx.card(
+    return rx.box(
         rx.vstack(
-            rx.hstack(
-                rx.icon("link", size=20, color=rx.color("amber", 9)),
-                rx.heading("Komoot-Tour", size="4"),
-                align="center",
+            card_heading(
+                "Komoot-Tour",
+                "Link zu einer öffentlichen Tour oder Share-Link einer privaten "
+                "Tour (Teilen → Link kopieren)",
             ),
-            rx.text(
-                "Link zu einer öffentlichen Tour oder einen Komoot-Share-Link "
-                "(private Tour) einfügen.",
-                size="2",
-                color_scheme="gray",
-            ),
-            rx.hstack(
+            rx.flex(
                 rx.input(
-                    placeholder="https://www.komoot.com/tour/123456789",
+                    placeholder="komoot.com/tour/…",
                     value=TrackForgeState.komoot_url,
                     on_change=TrackForgeState.update_komoot_url,
+                    aria_label="Komoot-Link",
+                    class_name="tf-mono",
                     width="100%",
                     size="3",
                 ),
                 rx.button(
-                    rx.icon("hammer", size=16),
                     "Laden",
                     on_click=TrackForgeState.fetch_komoot,
                     loading=TrackForgeState.is_loading,
+                    variant="surface",
+                    color_scheme="gray",
+                    high_contrast=True,
                     size="3",
                 ),
+                direction=rx.breakpoints(initial="column", xs="row"),
+                spacing="2",
                 width="100%",
             ),
-            spacing="3",
+            spacing="4",
             width="100%",
         ),
-        width="100%",
-    )
-
-
-def result_panel() -> rx.Component:
-    return rx.cond(
-        TrackForgeState.result_gpx != "",
-        rx.card(
-            rx.vstack(
-                rx.hstack(
-                    rx.icon("circle-check", size=20, color=rx.color("grass", 9)),
-                    rx.heading("Fertig geschmiedet", size="4"),
-                    align="center",
-                ),
-                rx.text(TrackForgeState.source_name, weight="medium"),
-                rx.hstack(
-                    rx.badge(
-                        TrackForgeState.removed_count.to_string()
-                        + " Wegpunkte entfernt",
-                        color_scheme="amber",
-                        size="2",
-                    ),
-                    rx.badge(
-                        TrackForgeState.trackpoint_count.to_string()
-                        + " Trackpunkte erhalten",
-                        color_scheme="grass",
-                        size="2",
-                    ),
-                ),
-                rx.button(
-                    rx.icon("download", size=16),
-                    "GPX herunterladen",
-                    on_click=TrackForgeState.download,
-                    size="3",
-                    width="100%",
-                ),
-                spacing="3",
-                width="100%",
-            ),
-            width="100%",
-        ),
+        class_name="tf-card",
     )
 
 
@@ -217,6 +292,7 @@ def error_panel() -> rx.Component:
             TrackForgeState.error,
             icon="triangle-alert",
             color_scheme="red",
+            variant="surface",
             width="100%",
         ),
     )
@@ -224,40 +300,65 @@ def error_panel() -> rx.Component:
 
 def header() -> rx.Component:
     return rx.vstack(
-        rx.image(src="/logo.svg", width="96px", height="96px"),
-        rx.heading("TrackForge", size="8"),
-        rx.text(
-            "Forge clean GPX tracks — Wegpunkte raus, Track bleibt.",
-            color_scheme="gray",
+        rx.hstack(
+            rx.image(src="/logo.svg", width="28px", height="28px", alt=""),
+            rx.text("TrackForge", size="3", weight="medium"),
+            spacing="2",
+            align="center",
         ),
-        align="center",
-        spacing="2",
+        rx.heading(
+            "Wegpunkte raus, Track bleibt",
+            as_="h1",
+            size=rx.breakpoints(initial="7", sm="8"),
+            weight="medium",
+            margin_top="28px",
+        ),
+        rx.text(
+            "Komoot bettet Highlights als Wegpunkte in GPX-Exporte ein. "
+            "TrackForge entfernt sie, damit dein Navi nur den Track anzeigt.",
+            size="3",
+            color=TEXT_2,
+            max_width="34rem",
+        ),
+        spacing="3",
+        width="100%",
     )
 
 
 def index() -> rx.Component:
-    return rx.center(
+    return rx.box(
         rx.vstack(
             header(),
-            error_panel(),
-            result_panel(),
-            upload_card(),
-            komoot_card(),
-            rx.text(
-                "TrackForge entfernt alle <wpt>-Wegpunkte aus GPX-Dateien.",
-                size="1",
-                color_scheme="gray",
+            rx.vstack(
+                error_panel(),
+                result_panel(),
+                upload_card(),
+                komoot_card(),
+                spacing="4",
+                width="100%",
+                margin_top="40px",
             ),
-            spacing="5",
+            rx.text(
+                "Entfernt alle ",
+                rx.code("<wpt>", variant="ghost", color=TEXT_2),
+                "-Elemente. Trackpunkte, Routen und Metadaten bleiben erhalten.",
+                size="2",
+                color=MUTED,
+                margin_top="32px",
+            ),
             width="100%",
-            max_width="560px",
-            padding_y="3em",
-            align="center",
+            max_width="648px",
+            margin_x="auto",
+            padding_x=rx.breakpoints(initial="16px", sm="24px"),
+            padding_top=rx.breakpoints(initial="40px", sm="64px"),
+            padding_bottom="48px",
+            spacing="0",
         ),
-        padding_x="1em",
         min_height="100vh",
+        background="var(--tf-bg)",
+        color="var(--tf-text)",
     )
 
 
-app = rx.App()
-app.add_page(index, title="TrackForge — Forge clean GPX tracks")
+app = rx.App(stylesheets=["/styles.css"])
+app.add_page(index, title="TrackForge — GPX-Wegpunkte entfernen")

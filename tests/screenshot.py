@@ -4,6 +4,7 @@ Usage: uv run python tests/screenshot.py [base_url]
 Requires: playwright (dev dependency) and `playwright install chromium`.
 """
 
+import math
 import sys
 import tempfile
 from pathlib import Path
@@ -14,6 +15,33 @@ BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
 OUT = Path(__file__).resolve().parent.parent / "docs" / "screenshots"
 DEMO_TOUR = "https://www.komoot.com/tour/13584167"
 
+
+def _demo_track(n: int = 250) -> list[tuple[float, float]]:
+    """A Rhine-valley-like stage: west to east with gentle meanders."""
+    pts = []
+    for i in range(n):
+        t = i / (n - 1)
+        lon = 7.58 + t * 0.21 + math.sin(t * 9) * 0.006
+        lat = (
+            50.33
+            + math.sin(t * 5.2 + 0.4) * 0.018
+            + math.sin(t * 17) * 0.004
+            + math.sin(t * 41) * 0.0012
+            - t * 0.012
+        )
+        pts.append((lat, lon))
+    return pts
+
+
+_TRACK = _demo_track()
+_WAYPOINTS = [
+    (
+        _TRACK[i][0] + (0.0042 if k % 2 else -0.0038),
+        _TRACK[i][1] + (0.002 if k % 3 else -0.002),
+    )
+    for k, i in enumerate([22, 58, 90, 124, 158, 196, 232])
+]
+
 DEMO_GPX = """<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="demo" xmlns="http://www.topografix.com/GPX/1/1">
 {waypoints}
@@ -23,12 +51,12 @@ DEMO_GPX = """<?xml version="1.0" encoding="UTF-8"?>
 </gpx>
 """.format(
     waypoints="\n".join(
-        f'  <wpt lat="50.{70 + i}" lon="7.{10 + i}"><name>Highlight {i + 1}</name></wpt>'
-        for i in range(7)
+        f'  <wpt lat="{lat:.6f}" lon="{lon:.6f}"><name>Highlight {i + 1}</name></wpt>'
+        for i, (lat, lon) in enumerate(_WAYPOINTS)
     ),
     trackpoints="\n".join(
-        f'    <trkpt lat="50.{700 + i}" lon="7.{100 + i}"><ele>{60 + i}</ele></trkpt>'
-        for i in range(250)
+        f'    <trkpt lat="{lat:.6f}" lon="{lon:.6f}"><ele>{60 + i}</ele></trkpt>'
+        for i, (lat, lon) in enumerate(_TRACK)
     ),
 )
 

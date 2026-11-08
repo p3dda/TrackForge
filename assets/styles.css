@@ -1,0 +1,100 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap");
+
+/* Workshop at night: graphite surfaces, one amber accent (the track line,
+   the primary action). Everything else stays neutral. */
+:root {
+  --tf-bg: #141415;
+  --tf-card: #19191b;
+  --tf-raised: #232325;
+  --tf-line: rgba(237, 237, 237, 0.08);
+  --tf-line-strong: rgba(237, 237, 237, 0.14);
+  --tf-text: #ededed;
+  --tf-text-2: #a1a1a6;
+  --tf-muted: #85858b;
+  --tf-accent: #ffc53d;
+  --tf-positive: #4cc38a;
+  --tf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --tf-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --tf-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.radix-themes {
+  --default-font-family: var(--tf-sans);
+  --heading-font-family: var(--tf-sans);
+  --code-font-family: var(--tf-mono);
+  --color-background: var(--tf-bg);
+}
+
+body {
+  background: var(--tf-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tf-mono {
+  font-family: var(--tf-mono);
+}
+
+.tf-card {
+  background: var(--tf-card);
+  border: 1px solid var(--tf-line);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+}
+
+.tf-track {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 600 / 220;
+  background: var(--tf-bg);
+  border: 1px solid var(--tf-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tf-track img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tf-legend-track {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--tf-accent);
+}
+
+.tf-legend-wpt {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--tf-muted);
+}
+
+.tf-figure {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.tf-enter {
+  animation: tf-rise 400ms var(--tf-ease) both;
+}
+
+@keyframes tf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-enter {
+    animation: none;
+  }
+}
