@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@v2.22.3
+        uses: step-security/harden-runner@v2.22.4
         with:
           egress-policy: audit
       - uses: actions/checkout@v7
@@ -42,7 +42,7 @@ jobs:
       # push to main / schedule / manual: fail on any known vulnerability.
       - name: Scan lockfiles
         if: github.event_name != 'pull_request'
-        uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
+        uses: google/osv-scanner-action/osv-scanner-action@v2.7.1
         with:
           scan-args: |-
             --config=osv-scanner.toml
@@ -64,7 +64,7 @@ jobs:
         id: scan-old
         if: github.event_name == 'pull_request'
         continue-on-error: true
-        uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
+        uses: google/osv-scanner-action/osv-scanner-action@v2.7.1
         with:
           scan-args: |-
             --format=json
@@ -79,7 +79,7 @@ jobs:
         id: scan-new
         if: github.event_name == 'pull_request'
         continue-on-error: true
-        uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
+        uses: google/osv-scanner-action/osv-scanner-action@v2.7.1
         with:
           scan-args: |-
             --format=json
@@ -102,7 +102,7 @@ jobs:
           exit "$status"
       - name: Report vulnerabilities introduced by this PR
         if: github.event_name == 'pull_request'
-        uses: google/osv-scanner-action/osv-reporter-action@v2.7.0
+        uses: google/osv-scanner-action/osv-reporter-action@v2.7.1
         with:
           scan-args: |-
             --old=old-results.json
@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@v2.22.3
+        uses: step-security/harden-runner@v2.22.4
         with:
           egress-policy: audit
       - uses: actions/checkout@v7
